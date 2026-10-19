@@ -12,62 +12,9 @@ module Console
 	
 	# A log filter which can be used to filter log messages based on severity, subject, and other criteria.
 	class Filter
-		if Object.const_defined?(:Ractor) and RUBY_VERSION >= "3.4"
-			# Define a method which can be shared between ractors.
-			def self.define_immutable_method(name, &block)
-				block = Ractor.make_shareable(block)
-				self.define_method(name, &block)
-			end
-		else
-			# Define a method.
-			def self.define_immutable_method(name, &block)
-				define_method(name, &block)
-			end
-		end
-		
-		# Create a new log filter with specific log levels.
-		#
-		# ```ruby
-		# class MyLogger < Console::Filter[debug: 0, okay: 1, bad: 2, terrible: 3]
-		# ```
-		#
-		# @parameter levels [Hash(Symbol, Integer)] A hash of log levels.
-		def self.[] **levels
-			klass = Class.new(self)
-			minimum_level, maximum_level = levels.values.minmax
-			
-			klass.instance_exec do
-				const_set(:LEVELS, levels.freeze)
-				const_set(:MINIMUM_LEVEL, minimum_level)
-				const_set(:MAXIMUM_LEVEL, maximum_level)
-				
-				# The default log level for instances of this filter class.
-				# Set to MINIMUM_LEVEL to allow all messages by default.
-				const_set(:DEFAULT_LEVEL, minimum_level)
-				
-				levels.each do |name, level|
-					const_set(name.to_s.upcase, level)
-					
-					define_immutable_method(name) do |subject = nil, *arguments, **options, &block|
-						if self.enabled?(subject, level)
-							@output.call(subject, *arguments, severity: name, **@options, **options, &block)
-						end
-						
-						return nil
-					end
-					
-					define_immutable_method("#{name}!") do
-						@level = level
-					end
-					
-					define_immutable_method("#{name}?") do
-						@level <= level
-					end
-				end
-			end
-			
-			return klass
-		end
+		# Spinel: `Filter[levels]` built its subclass at run time (Class.new,
+		# const_set and define_method over the levels); the one subclass console
+		# makes, Console::Logger, is written out in logger.rb instead.
 		
 		# Create a new log filter.
 		#
